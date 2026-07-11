@@ -59,7 +59,7 @@ STOCK_WATCHLIST = {
 }
 
 # ─── 選股過濾條件 ───
-MAX_STOCK_PRICE = 30.0          # 股價上限（低於此價格才納入分析）
+MAX_STOCK_PRICE = 50.0          # 股價上限（低於此價格才納入分析）
 MAX_STOCKS_PER_CATEGORY = 2     # 每個類別最多挑選幾檔
 
 # ─── 技術分析參數 ───
