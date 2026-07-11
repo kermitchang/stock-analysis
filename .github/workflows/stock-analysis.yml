@@ -1,0 +1,58 @@
+name: 📊 台股盤後分析
+
+# 排程：週一至週五台灣時間 14:30（= UTC 06:30）
+# 也支援手動觸發（在 GitHub Actions 頁面按「Run workflow」）
+on:
+  schedule:
+    - cron: '30 6 * * 1-5'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# GitHub Pages 部署權限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 防止同時多個 workflow 互相干擾
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  analyze-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: 🔽 取出程式碼
+        uses: actions/checkout@v4
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 📦 安裝依賴
+        run: |
+          pip install -r requirements.txt
+          pip install jinja2
+
+      - name: 🔍 執行台股四維度分析
+        id: analysis
+        run: |
+          python generate_site.py
+          echo "status=done" >> $GITHUB_OUTPUT
+
+      - name: 📄 上傳靜態網站
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: 🚀 部署到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 台股盤後分析儀表板</title>
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{
+            font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',sans-serif;
+            background:#0b0e14;color:#e0e4ea;line-height:1.6;min-height:100vh
+        }
+        .container{max-width:1200px;margin:0 auto;padding:20px}
+        header{
+            display:flex;justify-content:space-between;align-items:center;
+            padding:20px 0;border-bottom:1px solid #1e2532;margin-bottom:24px;flex-wrap:wrap;gap:12px
+        }
+        header h1{font-size:1.5rem;background:linear-gradient(135deg,#58a6ff,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        header .meta{font-size:.85rem;color:#8892a4;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+        .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600}
+        .badge.ok{background:#1a3a2a;color:#4ade80}
+        .badge.stale{background:#3a2a1a;color:#fbbf24}
+        .card{background:#131822;border:1px solid #1e2532;border-radius:12px;padding:20px;margin-bottom:16px}
+        .card-title{font-size:1rem;font-weight:700;color:#c8cedb;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+        @media(max-width:768px){.grid-2,.grid-3{grid-template-columns:1fr}}
+        .market-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a212e;flex-wrap:wrap;gap:8px}
+        .market-row:last-child{border-bottom:none}
+        .market-label{color:#8892a4;font-size:.9rem}
+        .market-value{font-size:1.1rem;font-weight:700}
+        .up{color:#f23645}
+        .down{color:#4ade80}
+        .flat{color:#8892a4}
+        .stock-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+        .stock-name{font-size:1.2rem;font-weight:700}
+        .stock-price{font-size:1.3rem;font-weight:700}
+        .category-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.7rem;font-weight:600;background:#1e2a3a;color:#7aa2f7}
+        .score-bar{height:6px;border-radius:3px;background:#1e2532;margin:8px 0}
+        .score-fill{height:100%;border-radius:3px;transition:width .5s}
+        .score-high{background:linear-gradient(90deg,#4ade80,#22c55e)}
+        .score-mid{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+        .score-low{background:linear-gradient(90deg,#f87171,#ef4444)}
+        .dimension{margin-bottom:8px}
+        .dimension-header{
+            display:flex;justify-content:space-between;align-items:center;
+            padding:10px 14px;background:#0f1420;border-radius:8px;cursor:pointer;user-select:none;
+            transition:background .2s;font-size:.9rem;font-weight:600
+        }
+        .dimension-header:hover{background:#161d2b}
+        .dimension-body{
+            padding:12px 14px;background:#0b0e14;border-radius:0 0 8px 8px;
+            display:none;font-size:.85rem;color:#a0aaba;border-left:2px solid #1e5a9e
+        }
+        .dimension-body.open{display:block}
+        .dimension-body p{margin-bottom:6px}
+        .dimension-body strong{color:#c8cedb}
+        .dimension-arrow{transition:transform .2s}
+        .dimension-header.open .dimension-arrow{transform:rotate(180deg)}
+        .verdict-box{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:8px;margin-top:8px}
+        .verdict-score{font-size:2rem;font-weight:800}
+        .verdict-text{font-size:.95rem}
+        .verdict-small{font-size:.8rem;color:#8892a4}
+        .stale-notice{text-align:center;padding:24px;color:#5a6378;font-size:.9rem}
+        .stale-notice a{color:#58a6ff;text-decoration:none}
+        .stale-notice a:hover{text-decoration:underline}
+    </style>
+</head>
+<body>
+<div class="container">
+
+<!-- Header -->
+<header>
+    <div>
+        <h1>📊 台股盤後四維度分析</h1>
+        <div class="meta">
+            <span>🕐 {{ now }}</span>
+            <span>📅 分析日期：{{ generated_at }}</span>
+        </div>
+    </div>
+    <span class="badge ok">✅ 每日自動更新</span>
+</header>
+
+{% if analysis %}
+<!-- ═══ Stats ═══ -->
+<div class="grid-3" style="margin-bottom:16px;">
+    <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;font-weight:800;color:#58a6ff">{{ analysis.stats.qualified }}</div>
+        <div style="font-size:.85rem;color:#8892a4">符合條件個股（<30元）</div>
+    </div>
+    <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;font-weight:800;color:#7aa2f7">{{ analysis.stats.total_watchlist }}</div>
+        <div style="font-size:.85rem;color:#8892a4">總觀察名單</div>
+    </div>
+    <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;font-weight:800;color:#4ade80">{{ analysis.stats.price_limit }}</div>
+        <div style="font-size:.85rem;color:#8892a4">股價上限（元）</div>
+    </div>
+</div>
+
+<!-- ═══ Market ═══ -->
+<div class="card">
+    <div class="card-title">📈 台股大盤動態觀測</div>
+    <div class="grid-2">
+        <div>
+            <div class="market-row">
+                <span class="market-label">加權指數</span>
+                <span class="market-value {{ 'up' if analysis.market.change and analysis.market.change > 0 else 'down' if analysis.market.change and analysis.market.change < 0 else 'flat' }}">
+                    {{ analysis.market.index or 'N/A' }}
+                </span>
+            </div>
+            <div class="market-row">
+                <span class="market-label">漲跌點數</span>
+                <span class="market-value {{ 'up' if analysis.market.change and analysis.market.change > 0 else 'down' if analysis.market.change and analysis.market.change < 0 else 'flat' }}">
+                    {{ analysis.market.change or 'N/A' }}
+                </span>
+            </div>
+            <div class="market-row">
+                <span class="market-label">漲跌幅</span>
+                <span class="market-value {{ 'up' if analysis.market.change_pct and analysis.market.change_pct > 0 else 'down' if analysis.market.change_pct and analysis.market.change_pct < 0 else 'flat' }}">
+                    {{ (analysis.market.change_pct|string + '%') if analysis.market.change_pct else 'N/A' }}
+                </span>
+            </div>
+        </div>
+        <div>
+            <div class="market-row">
+                <span class="market-label">資金風向</span>
+                <span class="market-value">{{ analysis.market_technical.direction if analysis.market_technical else 'N/A' }}</span>
+            </div>
+            <div class="market-row">
+                <span class="market-label">外資買賣超</span>
+                <span class="market-value {{ 'up' if analysis.institutional.foreign and analysis.institutional.foreign > 0 else 'down' if analysis.institutional.foreign and analysis.institutional.foreign < 0 else 'flat' }}">
+                    {{ (analysis.institutional.foreign|string + ' 億') if analysis.institutional.foreign else 'N/A' }}
+                </span>
+            </div>
+            <div class="market-row">
+                <span class="market-label">投信買賣超</span>
+                <span class="market-value {{ 'up' if analysis.institutional.sitc and analysis.institutional.sitc > 0 else 'down' if analysis.institutional.sitc and analysis.institutional.sitc < 0 else 'flat' }}">
+                    {{ (analysis.institutional.sitc|string + ' 億') if analysis.institutional.sitc else 'N/A' }}
+                </span>
+            </div>
+        </div>
+    </div>
+    {% if analysis.market_technical %}
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1e2532;font-size:.9rem;color:#8892a4">
+        {{ analysis.market_technical.summary }}
+    </div>
+    {% endif %}
+</div>
+
+<!-- ═══ Stocks ═══ -->
+<div class="card-title">🔍 30元以下潛力股深度解構</div>
+
+{% for stock in analysis.stocks %}
+<div class="card">
+    <div class="stock-header">
+        <div>
+            <div class="stock-name">{{ stock.stock_name }}（{{ stock.stock_id }}）</div>
+            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+                <span class="category-tag">{{ stock.category }}</span>
+            </div>
+        </div>
+        <div style="text-align:right">
+            <div class="stock-price {{ 'up' if stock.change_pct >= 0 else 'down' }}">{{ stock.price }} 元</div>
+            <div style="font-size:.85rem;{{ 'color:#f23645' if stock.change_pct >= 0 else 'color:#4ade80' }}">
+                {{ stock.change }}（{{ "%.2f"|format(stock.change_pct) }}%）
+            </div>
+        </div>
+    </div>
+
+    {% set score = stock.verdict.score %}
+    <div class="verdict-box" style="background:{% if score >= 70 %}#0a1a1a{% elif score >= 45 %}#1a1a0a{% else %}#1a0a0a{% endif %}">
+        <div>
+            <div class="verdict-score {{ 'up' if score >= 70 else 'flat' if score >= 45 else 'down' }}">{{ score }}</div>
+            <div class="verdict-small">綜合評分</div>
+        </div>
+        <div>
+            <div class="verdict-text" style="font-weight:700">{{ stock.verdict.trend }}</div>
+            <div class="verdict-small">{{ stock.verdict.suggestion }}</div>
+        </div>
+    </div>
+    <div class="score-bar">
+        <div class="score-fill {{ 'score-high' if score >= 70 else 'score-mid' if score >= 45 else 'score-low' }}" style="width:{{ score }}%"></div>
+    </div>
+
+    {% set dims = {'1':('📡','消息與題材面'),'2':('📊','技術與資金面'),'3':('💰','財務底氣面'),'4':('🏰','戰略與管理面')} %}
+    {% for d, (icon, name) in dims.items() %}
+    {% set dim = stock['dimension_' ~ d] %}
+    <div class="dimension">
+        <div class="dimension-header" onclick="toggleDim(this)">
+            <span><span style="font-size:1rem">{{ icon }}</span> {{ name }}</span>
+            <span class="dimension-arrow">▼</span>
+        </div>
+        <div class="dimension-body">
+            {% if dim.summary %}<p><strong>📋 摘要：</strong>{{ dim.summary }}</p>{% endif %}
+            {% if d == '1' %}
+                {% if dim.matched_themes %}<p><strong>🔗 匹配題材：</strong>{{ dim.matched_themes }}</p>{% endif %}
+                {% if dim.re_rating_signals %}<p><strong>🔄 Re-rating：</strong>{{ dim.re_rating_signals|join('、') }}</p>{% endif %}
+            {% elif d == '2' %}
+                <p><strong>📉 均線結構：</strong>{{ dim.ma_status }}</p>
+                <p><strong>📊 量價動能：</strong>{{ dim.volume_analysis }}</p>
+                <p><strong>📐 KD 指標：</strong>{{ dim.kd_status }}</p>
+                {% if dim.price_position %}<p><strong>📍 價格位置：</strong>{{ dim.price_position }}</p>{% endif %}
+            {% elif d == '3' %}
+                <p><strong>📈 營收趨勢：</strong>{{ dim.revenue_trend }}</p>
+                {% if dim.price_trend %}<p><strong>💹 股價趨勢：</strong>{{ dim.price_trend }}</p>{% endif %}
+                <p><strong>📋 獲利能力：</strong>{{ dim.profitability }}</p>
+            {% elif d == '4' %}
+                <p><strong>🏭 產業定位：</strong>{{ dim.industry_position }}</p>
+                <p><strong>💪 定價權：</strong>{{ dim.pricing_power }}</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endfor %}
+
+<!-- ═══ Footer ═══ -->
+<div style="text-align:center;padding:24px 0;color:#5a6378;font-size:.8rem;border-top:1px solid #1e2532;margin-top:16px">
+    ⚠️ 本報告為 AI 自動生成，僅供參考，投資決策請自行判斷<br>
+    📋 每日台股收盤後自動分析（週一至週五）<br>
+    資料來源：TWSE 官方 API + Yahoo Finance（均為免費公開資料）<br><br>
+    【本報告已同步準時回報給 Kermit】
+</div>
+
+{% else %}
+<!-- ═══ No data ═══ -->
+<div style="text-align:center;padding:80px 20px;color:#5a6378">
+    <div style="font-size:4rem;margin-bottom:16px">📊</div>
+    <h2>尚無分析資料</h2>
+    <p style="margin-top:8px">等待 GitHub Actions 排程自動執行首次分析</p>
+</div>
+{% endif %}
+
+</div>
+
+<script>
+function toggleDim(h){h.classList.toggle('open');var b=h.nextElementSibling;if(b)b.classList.toggle('open')}
+document.querySelectorAll('.dimension-header').forEach(function(el,i){if(i<2)el.click()});
+</script>
+</body>
+</html>
