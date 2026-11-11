@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bias %}
+{% block title %}{{ s.stock_id }} {{ s.name }}{% endblock %}
+{% block content %}
+<p class="sub" style="margin-bottom:4px"><a href="/">← 總覽</a></p>
+<h1>{{ s.stock_id }} {{ s.name }}</h1>
+<p class="sub">{{ s.theme or '—' }} · {{ s.theme_note or s.industry_name or '' }} · {{ '上櫃' if s.market == 'TPEX' else '上市' }}
+{% if last %} · 收盤 <b class="num">{{ last.close }}</b>（{{ last.date }}）{% endif %}</p>
+
+<div class="card">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+    <h2 style="margin:0">近 120 日 K 線與預測區間</h2>
+    <div class="filters" style="margin:0 0 0 auto">
+      {% for v in ['quant','quant_am','llm','baseline'] %}<a class="chip {{ 'on' if variant==v }}" href="?v={{ v }}">{{ VARIANT_NAMES[v] }}</a>{% endfor %}
+    </div>
+  </div>
+  {{ chart }}
+  <div class="legend"><span><i style="background:var(--ok);opacity:.5"></i>預測區間命中</span><span><i style="background:var(--bad);opacity:.5"></i>沒命中</span><span><i style="background:var(--accent);opacity:.6"></i>明日預測</span><span><i style="background:var(--up)"></i>紅K 收漲</span><span><i style="background:var(--down)"></i>綠K 收跌</span></div>
+  {% if rec %}<p class="muted" style="margin:10px 0 0;font-size:13.5px">這檔股票的歷史成績：
+  {% for r in rec %}{{ VARIANT_NAMES.get(r.variant, r.variant) }} {{ r.n }} 筆，區間 {{ r.range_hit|pct0 }}、方向 {{ r.dir_hit|pct0 }}{{ '；' if not loop.last }}{% endfor %}</p>{% endif %}
+</div>
+
+{% if llm_preds %}
+<div class="card"><h2>LLM 分析紀錄</h2>
+  {% for p in llm_preds %}
+  <details {{ 'open' if loop.first }} style="padding:8px 0;border-bottom:1px solid var(--border)">
+    <summary><b>{{ p.date }}</b> → {{ p.low }} – {{ p.high }} {{ bias(p.bias) }} <span class="num muted">上漲 {{ p.prob_up|pct0 }}</span>
+      {% if p.target_date %} · 實際 <span class="num {{ p.actual_ret|sign }}">{{ p.actual_close }}（{{ p.actual_ret|pct(1) }}）</span>
+        <span class="pill {{ 'hit' if p.in_range else 'miss' }}">區間{{ '✓' if p.in_range else '✗' }}</span>
+        <span class="pill {{ 'hit' if p.dir_hit else 'miss' }}">方向{{ '✓' if p.dir_hit else '✗' }}</span>{% endif %}</summary>
+    <div style="padding:8px 0 4px 2px;font-size:14px">
+      {% set d = p.detail %}
+      {% if d.thesis %}<p style="margin:4px 0"><b>判斷：</b>{{ d.thesis }}</p>{% endif %}
+      {% if d.fundamental_view %}<p style="margin:4px 0"><b>財報營收：</b>{{ d.fundamental_view }}</p>{% endif %}
+      {% if d.news_view %}<p style="margin:4px 0"><b>消息面：</b>{{ d.news_view }}</p>{% endif %}
+      {% if d.override_quant %}<p style="margin:4px 0"><b>與量化不同：</b>{{ d.override_quant }}</p>{% endif %}
+      {% if d.risks %}<p style="margin:4px 0"><b>風險：</b>{{ d.risks|join('；') }}</p>{% endif %}
+      {% if d.analog %}<p style="margin:4px 0" class="muted">歷史相似 {{ d.analog.k }} 例：隔日上漲 {{ d.analog.up_ratio|pct0 }}，平均 {{ d.analog.mean|pct(2) }}</p>{% endif %}
+    </div>
+  </details>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid g2">
+  <div class="card"><h2>漲跌歸因</h2>
+    <div class="table-wrap"><table><thead><tr><th>日期</th><th class="n">漲跌</th><th class="n">大盤/產業/個股</th><th>主因</th></tr></thead><tbody>
+    {% for a in atts %}<tr><td class="num">{{ a.date[5:] }}</td><td class="n {{ a.ret|sign }}">{{ a.ret|pct(2) }}</td>
+      <td class="n faint">{{ a.market_part|pct(1) }} / {{ a.industry_part|pct(1) }} / <span class="{{ a.idio_part|sign }}">{{ a.idio_part|pct(1) }}</span></td>
+      <td><b>{{ a.primary_driver }}</b><div class="thesis">{{ a.explanation or '' }}</div></td></tr>
+    {% else %}<tr><td colspan="4" class="empty">尚無資料</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+  <div class="card"><h2>新聞</h2>
+    {% for n in news %}<div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:14px">
+      <a href="{{ n.url }}" target="_blank" rel="noopener">{{ n.title }}</a>
+      <div class="faint" style="font-size:12.5px">{{ n.published_at[:16].replace('T',' ') }} · {{ n.source }}
+      {% if n.sentiment is not none and n.sentiment == n.sentiment %} · {{ n.category }} · <span class="{{ n.sentiment|sign }}">情緒 {{ '%+d'|format(n.sentiment|int) }}</span>{% endif %}</div></div>
+    {% else %}<div class="empty">尚無新聞</div>{% endfor %}
+  </div>
+</div>
+
+<div class="grid g3">
+  <div class="card"><h2>月營收</h2>
+    <div class="table-wrap"><table><thead><tr><th>月份</th><th class="n">營收(百萬)</th><th class="n">月增</th><th class="n">年增</th></tr></thead><tbody>
+    {% for r in revenue %}<tr><td>{{ r.ym }}</td><td class="n">{{ '{:,.0f}'.format(r.revenue/1000) if r.revenue else '—' }}</td>
+      <td class="n {{ r.mom|sign }}">{{ r.mom|pct(1) }}</td><td class="n {{ r.yoy|sign }}">{{ r.yoy|pct(1) }}</td></tr>
+    {% else %}<tr><td colspan="4" class="empty">每月 10 日前後更新</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="card"><h2>季財報（年初累計）</h2>
+    <div class="table-wrap"><table><thead><tr><th>季</th><th class="n">毛利率</th><th class="n">營益率</th><th class="n">EPS</th></tr></thead><tbody>
+    {% for f in fin %}<tr><td>{{ f.year }}Q{{ f.quarter }}</td>
+      <td class="n">{{ (f.gross_profit/f.revenue)|pct0 if f.revenue and f.gross_profit is not none else '—' }}</td>
+      <td class="n">{{ (f.op_income/f.revenue)|pct0 if f.revenue and f.op_income is not none else '—' }}</td>
+      <td class="n">{{ f.eps if f.eps is not none else '—' }}</td></tr>
+    {% else %}<tr><td colspan="4" class="empty">財報公布後自動更新</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="card"><h2>三大法人（張）</h2>
+    <div class="table-wrap"><table><thead><tr><th>日期</th><th class="n">外資</th><th class="n">投信</th><th class="n">合計</th></tr></thead><tbody>
+    {% for c in chips %}<tr><td class="num">{{ c.date[5:] }}</td>
+      {% for k in ['foreign_net','trust_net','total_net'] %}<td class="n {{ c[k]|sign }}">{{ '{:+,.0f}'.format(c[k]/1000) if c[k] is not none else '—' }}</td>{% endfor %}</tr>
+    {% else %}<tr><td colspan="4" class="empty">尚無資料</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}

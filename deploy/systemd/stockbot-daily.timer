@@ -1,0 +1,10 @@
+[Unit]
+Description=stockbot 每日盤後分析（17:30，20:30 補跑；同一天只會分析一次）
+
+[Timer]
+OnCalendar=Mon..Fri 17:30 Asia/Taipei
+OnCalendar=Mon..Fri 20:30 Asia/Taipei
+Persistent=true
+
+[Install]
+WantedBy=timers.target

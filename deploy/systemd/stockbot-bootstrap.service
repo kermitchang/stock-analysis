@@ -1,0 +1,11 @@
+[Unit]
+Description=stockbot bootstrap
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=__DIR__
+ExecStart=__DIR__/venv/bin/python -m stockbot bootstrap
+TimeoutStartSec=4h
+Nice=10

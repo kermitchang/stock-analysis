@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}stockbot{% endblock %} · 台股學習分析</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23e5484d'/><path d='M7 22l6-7 5 4 7-9' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<style>
+:root{
+  --bg:#f6f7f9;--surface:#fff;--surface-2:#f1f3f6;--border:#e3e6eb;--text:#161a20;--muted:#6b7380;--faint:#9aa1ad;
+  --accent:#3b6cf6;--accent-soft:#e8eefe;
+  --up:#e5484d;--up-soft:#fdecec;--down:#18a058;--down-soft:#e7f6ee;
+  --warn:#c27c0e;--warn-soft:#fdf3e1;--bad:#d93036;--bad-soft:#fdeaea;--ok:#18a058;--ok-soft:#e7f6ee;
+  --s-base:#9aa1ad;--s-quant:#3b6cf6;--s-am:#8b5cf6;--s-llm:#f08c00;
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);
+  --radius:14px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d1014;--surface:#151a21;--surface-2:#1b2129;--border:#262e39;--text:#e7eaee;--muted:#8d96a3;--faint:#5f6873;
+  --accent:#6d93ff;--accent-soft:#1a2440;--up:#ff6369;--up-soft:#3a1719;--down:#3dd68c;--down-soft:#11301f;
+  --warn:#f1a10d;--warn-soft:#352610;--bad:#ff6369;--bad-soft:#3a1719;--ok:#3dd68c;--ok-soft:#11301f;
+  --s-base:#5f6873;--shadow:none;
+}}
+:root[data-theme="dark"]{
+  --bg:#0d1014;--surface:#151a21;--surface-2:#1b2129;--border:#262e39;--text:#e7eaee;--muted:#8d96a3;--faint:#5f6873;
+  --accent:#6d93ff;--accent-soft:#1a2440;--up:#ff6369;--up-soft:#3a1719;--down:#3dd68c;--down-soft:#11301f;
+  --warn:#f1a10d;--warn-soft:#352610;--bad:#ff6369;--bad-soft:#3a1719;--ok:#3dd68c;--ok-soft:#11301f;
+  --s-base:#5f6873;--shadow:none;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.num,td.n,th.n{font-variant-numeric:tabular-nums}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.top-in{max-width:1240px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;color:var(--text)}
+.brand-mark{width:28px;height:28px;border-radius:8px;background:var(--up);display:grid;place-items:center}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav a{padding:6px 12px;border-radius:999px;color:var(--muted);font-weight:500}
+nav a.on,nav a:hover{background:var(--surface-2);color:var(--text);text-decoration:none}
+.theme-btn{margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);border-radius:999px;padding:5px 10px;cursor:pointer;font:inherit;font-size:13px}
+main{max-width:1240px;margin:0 auto;padding:20px 16px 60px}
+.sub{overflow-wrap:anywhere}
+h1{font-size:24px;margin:4px 0 4px;letter-spacing:-.01em}
+h2{font-size:17px;margin:0 0 12px}
+.sub{color:var(--muted);margin:0 0 18px}
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:900px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g3,.g2{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:560px){.kpi .value{font-size:21px}.card{padding:14px}.table-wrap{margin:0 -14px;padding:0 14px}h1{font-size:20px}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);min-width:0}
+.card+.card,.grid+.card,.card+.grid,.grid+.grid{margin-top:16px}
+.grid>.card{margin-top:0}
+.kpi .label{color:var(--muted);font-size:13px}
+.kpi .value{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+.kpi .delta{font-size:13px;margin-top:2px}
+.up{color:var(--up)}.down{color:var(--down)}.muted{color:var(--muted)}.faint{color:var(--faint)}
+.banner{display:flex;gap:10px;align-items:center;padding:12px 16px;border-radius:12px;margin-bottom:16px;font-weight:500}
+.banner.ok{background:var(--ok-soft);color:var(--ok)}.banner.warn{background:var(--warn-soft);color:var(--warn)}.banner.bad{background:var(--bad-soft);color:var(--bad)}
+.banner .meta{margin-left:auto;font-weight:400;font-size:13px;opacity:.85}
+.table-wrap{overflow-x:auto;margin:0 -18px;padding:0 18px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:12.5px;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+th.n,td.n{text-align:right;white-space:nowrap}
+tbody tr:hover{background:var(--surface-2)}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.up{background:var(--up-soft)}.pill.down{background:var(--down-soft)}.pill.flat{background:var(--surface-2);color:var(--muted)}
+.pill.core{background:var(--accent-soft);color:var(--accent)}.pill.dyn{background:var(--surface-2);color:var(--muted)}
+.pill.active{background:var(--ok-soft);color:var(--ok)}.pill.candidate{background:var(--warn-soft);color:var(--warn)}
+.pill.retired,.pill.rejected{background:var(--surface-2);color:var(--faint)}
+.pill.hit{background:var(--ok-soft);color:var(--ok)}.pill.miss{background:var(--bad-soft);color:var(--bad)}
+.prob{display:flex;align-items:center;gap:6px;min-width:90px}
+.prob-bar{flex:1;height:6px;border-radius:3px;background:var(--surface-2);position:relative;overflow:hidden}
+.prob-bar span{position:absolute;top:0;bottom:0}
+.stock-name{font-weight:600;color:var(--text)}.stock-id{color:var(--faint);font-size:12.5px;margin-right:4px}
+.thesis{color:var(--muted);font-size:13px;margin-top:2px;max-width:420px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{border:1px solid var(--border);background:var(--surface);color:var(--muted);border-radius:999px;padding:4px 12px;font:inherit;font-size:13px;cursor:pointer}
+.chip.on{background:var(--text);color:var(--surface);border-color:var(--text)}
+.chart{width:100%;height:auto;display:block}
+.chart .grid{stroke:var(--border);stroke-width:1}.chart .axis{fill:var(--faint);font-size:11px}
+.chart .ref{stroke:var(--faint);stroke-dasharray:4 4}
+.chart .wick{stroke-width:1}.chart .wick.up{stroke:var(--up)}.chart .wick.down{stroke:var(--down)}
+.chart .body.up{fill:var(--up)}.chart .body.down{fill:var(--down)}
+.chart .band-hit{fill:var(--ok);opacity:.18}.chart .band-miss{fill:var(--bad);opacity:.2}.chart .band-open{fill:var(--accent);opacity:.25}
+.chart .line{fill:none;stroke-width:2.2;stroke-linejoin:round}.chart .bar{fill:var(--accent);opacity:.8}
+.chart .s-base{stroke:var(--s-base);fill:var(--s-base)}.chart .s-quant{stroke:var(--s-quant);fill:var(--s-quant)}
+.chart .s-am{stroke:var(--s-am);fill:var(--s-am)}.chart .s-llm{stroke:var(--s-llm);fill:var(--s-llm)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.empty{color:var(--faint);padding:30px 0;text-align:center}
+.md{line-height:1.7}.md table{margin:10px 0 18px}.md h1{font-size:22px}.md h2{font-size:18px;margin-top:28px}.md h3{font-size:16px;margin-top:20px}
+.md blockquote{margin:8px 0;padding:8px 14px;background:var(--surface-2);border-radius:10px;color:var(--muted)}
+.md code{background:var(--surface-2);padding:1px 5px;border-radius:5px}
+.side{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px}@media(max-width:900px){.side{grid-template-columns:minmax(0,1fr)}}
+.list a{display:block;padding:5px 10px;border-radius:8px;color:var(--text);font-size:14px}.list a.on{background:var(--accent-soft);color:var(--accent)}
+.list h3{font-size:12.5px;color:var(--muted);margin:14px 10px 4px}
+details summary{cursor:pointer;color:var(--muted)}
+.foot{color:var(--faint);font-size:12.5px;text-align:center;margin-top:30px}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="brand" href="/"><span class="brand-mark"><svg width="16" height="16" viewBox="0 0 32 32"><path d="M5 23l7-8 5 4 10-11" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>stockbot</a>
+  <nav>
+    <a href="/" class="{{ 'on' if request.path == '/' }}">總覽</a>
+    <a href="/learning" class="{{ 'on' if request.path.startswith('/learning') }}">學習進度</a>
+    <a href="/reports" class="{{ 'on' if request.path.startswith('/reports') }}">報告</a>
+  </nav>
+  <button class="theme-btn" id="themeBtn" type="button">◐ 主題</button>
+</div></header>
+<main>{% block content %}{% endblock %}
+<p class="foot">資料來源：證交所／櫃買中心 OpenAPI、鉅亨網、Google News、Yahoo Finance · 僅供研究學習，非投資建議</p>
+</main>
+<script>
+(function(){
+  var k="stockbot-theme",r=document.documentElement;
+  try{var s=localStorage.getItem(k);if(s)r.setAttribute("data-theme",s);}catch(e){}
+  document.getElementById("themeBtn").onclick=function(){
+    var dark=r.getAttribute("data-theme")?r.getAttribute("data-theme")==="dark":matchMedia("(prefers-color-scheme:dark)").matches;
+    var n=dark?"light":"dark";r.setAttribute("data-theme",n);try{localStorage.setItem(k,n);}catch(e){}
+  };
+})();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

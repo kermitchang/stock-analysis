@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}報告{% endblock %}
+{% block content %}
+<div class="side">
+  <div class="card list" style="align-self:start;max-height:80vh;overflow:auto">
+    {% for g, files in groups.items() %}
+    <h3>{{ g }}（{{ files|length }}）</h3>
+    {% for f in files[:40] %}<a href="/reports/{{ f }}" class="{{ 'on' if f == current }}">{{ f.split('/')[-1][:-3] }}</a>{% endfor %}
+    {% endfor %}
+  </div>
+  <div class="card md">{% if html %}{{ html }}{% else %}<div class="empty">尚無報告</div>{% endif %}</div>
+</div>
+{% endblock %}

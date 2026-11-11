@@ -1,0 +1,9 @@
+[Unit]
+Description=stockbot 早盤修正（用前一晚費半修正今日預測）
+
+[Timer]
+OnCalendar=Mon..Fri 08:15 Asia/Taipei
+Persistent=false
+
+[Install]
+WantedBy=timers.target

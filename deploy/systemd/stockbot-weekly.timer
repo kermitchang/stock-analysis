@@ -1,0 +1,9 @@
+[Unit]
+Description=stockbot 每週學習（重新訓練、規則複驗、週報）
+
+[Timer]
+OnCalendar=Sat 07:00 Asia/Taipei
+Persistent=true
+
+[Install]
+WantedBy=timers.target

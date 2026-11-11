@@ -1,0 +1,12 @@
+[Unit]
+Description=stockbot 網頁儀表板（區網 :5000）
+After=network-online.target
+
+[Service]
+WorkingDirectory=__DIR__
+ExecStart=__DIR__/venv/bin/python -m stockbot web
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

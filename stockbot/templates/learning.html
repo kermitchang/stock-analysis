@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import scoreboard %}
+{% block title %}學習進度{% endblock %}
+{% block content %}
+<h1>學習進度</h1>
+<p class="sub">所有成績都由程式對帳計算，不採用 LLM 自評。如果系統真的在進步，下面的曲線應該要慢慢往上、Brier 往下。</p>
+
+<div class="grid g2">
+  <div class="card"><h2>方向命中率（滾動 20 日，有表態者）</h2>{{ dir_chart }}
+    <div class="legend"><span><i style="background:var(--s-quant)"></i>量化模型</span><span><i style="background:var(--s-am)"></i>量化+早盤修正</span><span><i style="background:var(--s-llm)"></i>LLM 分析師</span><span class="faint">虛線 = 50%（擲銅板）</span></div></div>
+  <div class="card"><h2>區間命中率（滾動 20 日）</h2>{{ range_chart }}
+    <div class="legend"><span><i style="background:var(--s-base)"></i>基準</span><span><i style="background:var(--s-quant)"></i>量化模型</span><span><i style="background:var(--s-am)"></i>早盤修正</span><span><i style="background:var(--s-llm)"></i>LLM</span><span class="faint">虛線 = 目標 70%</span></div></div>
+</div>
+
+<div class="grid g2">
+  <div class="card"><h2>累積成績（全部預測）</h2>{{ scoreboard(sb_all) }}</div>
+  <div class="card"><h2>公平比較：只看 LLM 分析過的股票</h2>{{ scoreboard(sb_focus) }}</div>
+</div>
+
+<div class="card"><h2>規則庫（系統的「經驗」）</h2>
+  <p class="faint" style="margin:-6px 0 10px;font-size:13px">每條規則都用多年歷史資料回測；勝率要顯著高於基準（lift ≥ 3%、p &lt; 0.05）才會啟用，每週複驗，失效就退役。</p>
+  <div class="table-wrap"><table>
+  <thead><tr><th>#</th><th>狀態</th><th>規則</th><th>條件</th><th class="n">樣本</th><th class="n">勝率</th><th class="n">基準</th><th class="n">lift</th><th class="n">近期 lift</th><th>來源</th></tr></thead>
+  <tbody>{% for r in rules %}
+  <tr><td class="faint">{{ r.id }}</td><td><span class="pill {{ r.status }}">{{ {'active':'啟用','candidate':'觀察','retired':'退役','rejected':'未通過'}[r.status] }}</span></td>
+    <td><b>{{ r.text }}</b><div class="thesis">{{ r.note or '' }}</div></td><td class="faint" style="font-size:12.5px"><code>{{ r.cond }}</code></td>
+    <td class="n">{{ '{:,}'.format(r.n) if r.n is not none else '—' }}</td><td class="n">{{ r.hit_rate|pct0 }}</td><td class="n faint">{{ r.base_rate|pct0 }}</td>
+    <td class="n {{ r.lift|sign }}">{{ r.lift|pct(1) }}</td><td class="n {{ r.recent_lift|sign }}">{{ r.recent_lift|pct(1) }}</td>
+    <td class="faint">{{ {'seed':'種子','llm':'LLM 提案','manual':'手動'}.get(r.source, r.source) }}</td></tr>
+  {% else %}<tr><td colspan="10" class="empty">尚無規則</td></tr>{% endfor %}</tbody></table></div>
+</div>
+
+<div class="grid g2">
+  <div class="card"><h2>量化模型訓練紀錄</h2>
+    <div class="table-wrap"><table><thead><tr><th>訓練時間</th><th class="n">AUC</th><th class="n">Brier</th><th class="n">基準 Brier</th><th class="n">方向命中</th></tr></thead><tbody>
+    {% for m in models %}<tr><td class="num">{{ m.at[:10] }}</td><td class="n">{{ '%.3f'|format(m.auc) if m.auc else '—' }}</td>
+      <td class="n">{{ '%.4f'|format(m.brier) }}</td><td class="n faint">{{ '%.4f'|format(m.brier_baseline) }}</td>
+      <td class="n">{{ m.dir_hit_when_decided|pct0 if m.dir_hit_when_decided is not none else '—' }}</td></tr>
+    {% else %}<tr><td colspan="5" class="empty">尚未訓練</td></tr>{% endfor %}</tbody></table></div>
+    <p class="faint" style="font-size:12.5px;margin:10px 0 0">AUC 0.5 = 隨機；每週六用最新資料重新訓練，驗證期為最近 60 個交易日。</p>
+  </div>
+  <div class="card"><h2>LLM 花費（近 30 日，合計 ${{ '%.2f'|format(total_cost) }}）</h2>{{ cost_chart }}
+    {% if drivers %}<h2 style="margin-top:18px">近 30 日漲跌主因分布</h2>
+    <div class="filters">{% for d in drivers %}<span class="chip">{{ d.d }} <b>{{ d.n }}</b></span>{% endfor %}</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

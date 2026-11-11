@@ -2,7 +2,7 @@
 
 本目錄收錄 **Hermes AI 分析系統** 每日/每週產出的台股盤後分析報告。
 
-> ⚠️ 本目錄與本 repo 的 `analyzer.py`（舊版 Python 分析系統）是**兩套獨立系統**。
+> ⚠️ 本目錄是 Hermes AI 的報告；stockbot（本 repo 的 Python 學習系統）的報告在 `reports/stockbot/`。
 > 舊系統的產出在 `data/` 與 `_site/`；AI 分析報告在 `reports/`。
 > 兩者共存，AI 報告可作為舊系統未來改進的學習資料。
 

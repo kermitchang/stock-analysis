@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_macros.html" import scoreboard, prob, bias %}
+{% block title %}總覽{% endblock %}
+{% block content %}
+{% if status.run %}
+<div class="banner {{ status.level }}">
+  <span>{{ status.message or ('上次執行：' ~ status.run.status) }}</span>
+  <span class="meta">上次分析 {{ (status.run.finished_at or status.run.started_at)[:16].replace('T',' ') }} · 近 30 日 LLM 花費 ${{ '%.2f'|format(status.spent30) }}</span>
+</div>
+{% endif %}
+
+{% if not date %}
+<div class="card"><h2>還沒有分析資料</h2><p class="muted">請先執行 <code>python -m stockbot bootstrap</code>，再執行 <code>python -m stockbot daily</code>。</p></div>
+{% else %}
+<h1>{{ date }} 盤後 · 明日預測</h1>
+<p class="sub">固定名單 {{ rows|selectattr('source','equalto','core')|list|length }} 檔 ＋ 動態挑選 {{ rows|selectattr('source','equalto','dynamic')|list|length }} 檔 · 橘色標記為 LLM 深入分析的重點股</p>
+
+<div class="grid g4">
+  <div class="card kpi"><div class="label">加權指數</div>
+    <div class="value num">{{ '{:,.0f}'.format(market.twii) if market.twii else '—' }}</div>
+    <div class="delta num {{ market.twii_ret|sign }}">{{ market.twii_ret|pct(2) }} <span class="faint">· 5日 {{ market.twii_ret5|pct(1) }}</span></div></div>
+  <div class="card kpi"><div class="label">費城半導體（{{ (market.sox_date or '')[5:] }} 美股）</div>
+    <div class="value num">{{ '{:,.0f}'.format(market.sox) if market.sox else '—' }}</div>
+    <div class="delta num {{ market.sox_ret|sign }}">{{ market.sox_ret|pct(2) }}</div></div>
+  {% set q = sb[sb.variant=='quant'] %}{% set l = sb[sb.variant=='llm'] %}
+  <div class="card kpi"><div class="label">量化模型 · 近20日方向命中</div>
+    <div class="value num">{{ q.dir_hit_decided.iloc[0]|pct0 if not q.empty else '—' }}</div>
+    <div class="delta muted">區間命中 {{ q.range_hit.iloc[0]|pct0 if not q.empty else '—' }}</div></div>
+  <div class="card kpi"><div class="label">LLM 分析師 · 近20日方向命中</div>
+    <div class="value num">{{ l.dir_hit_decided.iloc[0]|pct0 if not l.empty else '—' }}</div>
+    <div class="delta muted">區間命中 {{ l.range_hit.iloc[0]|pct0 if not l.empty else '—' }}</div></div>
+</div>
+
+<div class="card">
+  <h2>明日股價預測</h2>
+  <div class="filters" id="filters">
+    <button class="chip on" data-f="all">全部</button>
+    <button class="chip" data-f="llm">LLM 重點</button>
+    <button class="chip" data-f="core">固定名單</button>
+    <button class="chip" data-f="dynamic">動態挑選</button>
+    {% for t in themes %}<button class="chip" data-f="t:{{ t }}">{{ t }}</button>{% endfor %}
+  </div>
+  <div class="table-wrap"><table id="preds">
+  <thead><tr><th>股票</th><th>主題</th><th class="n">收盤</th><th class="n">今日</th><th>量化區間</th><th>上漲機率</th><th>早盤修正</th><th>LLM 判斷</th><th>今日主因</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr data-src="{{ r.source }}" data-theme="{{ r.theme }}" data-llm="{{ 1 if r.llm else 0 }}" {% if r.llm %}style="box-shadow:inset 3px 0 0 var(--s-llm)"{% endif %}>
+    <td><a href="/stock/{{ r.id }}"><span class="stock-id">{{ r.id }}</span><span class="stock-name">{{ r.name }}</span></a><br>
+      <span class="pill {{ 'core' if r.source=='core' else 'dyn' }}" title="{{ r.reason }}">{{ '固定' if r.source=='core' else '動態' }}</span></td>
+    <td class="muted" style="white-space:nowrap">{{ r.theme }}</td>
+    <td class="n">{{ r.close }}</td>
+    <td class="n {{ r.ret|sign }}">{{ r.ret|pct(2) }}</td>
+    <td class="num">{% if r.quant %}{{ r.quant.low }} – {{ r.quant.high }}{% endif %}</td>
+    <td>{{ prob(r.quant.prob if r.quant else none) }}</td>
+    <td class="num">{% if r.quant_am %}{{ r.quant_am.low }} – {{ r.quant_am.high }} {{ bias(r.quant_am.bias) }}{% else %}<span class="faint">08:15 更新</span>{% endif %}</td>
+    <td>{% if r.llm %}<span class="num">{{ r.llm.low }} – {{ r.llm.high }}</span> {{ bias(r.llm.bias) }}<div class="thesis">{{ r.thesis or '' }}</div>{% else %}<span class="faint">—</span>{% endif %}</td>
+    <td class="muted">{{ r.driver or '' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody></table></div>
+</div>
+
+<div class="grid g2">
+  <div class="card"><h2>今天為什麼漲跌</h2>
+    <p class="faint" style="margin:-6px 0 10px;font-size:13px">報酬 = 大盤 + 產業 + 個股；列出個股因素最大的股票</p>
+    <div class="table-wrap"><table>
+    <thead><tr><th>股票</th><th class="n">漲跌</th><th class="n">個股部分</th><th>主因與說明</th></tr></thead>
+    <tbody>{% for a in atts %}
+    <tr><td><a href="/stock/{{ a.stock_id }}"><span class="stock-id">{{ a.stock_id }}</span>{{ a.name }}</a></td>
+      <td class="n {{ a.ret|sign }}">{{ a.ret|pct(2) }}</td><td class="n {{ a.idio_part|sign }}">{{ a.idio_part|pct(1) }}</td>
+      <td><b>{{ a.primary_driver }}</b><div class="thesis">{{ a.explanation or '' }}</div></td></tr>
+    {% endfor %}</tbody></table></div>
+  </div>
+  <div class="card"><h2>近 20 個交易日成績</h2>{{ scoreboard(sb) }}</div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+  var chips=document.querySelectorAll("#filters .chip"),rows=document.querySelectorAll("#preds tbody tr");
+  chips.forEach(function(c){c.onclick=function(){
+    chips.forEach(function(x){x.classList.remove("on")});c.classList.add("on");var f=c.dataset.f;
+    rows.forEach(function(r){var show=f==="all"||(f==="llm"&&r.dataset.llm==="1")||f===r.dataset.src||f==="t:"+r.dataset.theme;r.style.display=show?"":"none";});
+  };});
+})();
+</script>
+{% endblock %}

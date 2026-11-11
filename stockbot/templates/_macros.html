@@ -1,0 +1,24 @@
+{% macro scoreboard(sb) %}
+{% if sb.empty %}<div class="empty">尚無可對帳的預測（每天收盤後會自動對帳上一個交易日的預測）</div>{% else %}
+<div class="table-wrap"><table>
+<thead><tr><th>版本</th><th class="n">筆數</th><th class="n">區間命中</th><th class="n">方向命中（有表態）</th><th class="n">開盤即出區間</th><th class="n">Brier ↓</th><th class="n">區間寬</th></tr></thead>
+<tbody>{% for r in sb.itertuples() %}
+<tr><td><i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--{{ VARIANT_CLS.get(r.variant,'s-base') }});margin-right:6px"></i>{{ VARIANT_NAMES.get(r.variant, r.variant) }}</td>
+<td class="n">{{ r.n|int }}</td><td class="n">{{ r.range_hit|pct0 }}</td>
+<td class="n">{% if r.dir_hit_decided == r.dir_hit_decided and r.dir_hit_decided is not none %}<b>{{ r.dir_hit_decided|pct0 }}</b> <span class="faint">/ {{ r.n_decided|int }}</span>{% else %}—{% endif %}</td>
+<td class="n">{{ r.open_outside|pct0 }}</td>
+<td class="n">{{ '%.3f'|format(r.brier) if r.brier == r.brier and r.brier is not none else '—' }}</td>
+<td class="n">{{ r.avg_width|pct0 }}</td></tr>{% endfor %}
+</tbody></table></div>
+<p class="faint" style="font-size:12.5px;margin:10px 0 0">方向命中 50% ≈ 擲銅板；Brier 越低越好（0.25 ≈ 隨便猜 50%）。區間命中目標約 70%。</p>
+{% endif %}
+{% endmacro %}
+
+{% macro prob(p) %}
+{% if p is none %}<span class="faint">—</span>{% else %}
+<div class="prob"><span class="num {{ 'up' if p > 0.55 else 'down' if p < 0.45 else 'muted' }}" style="width:34px">{{ '%.0f'|format(p*100) }}%</span>
+<div class="prob-bar">{% if p >= 0.5 %}<span style="left:50%;width:{{ (p-0.5)*100 }}%;background:var(--up)"></span>{% else %}<span style="right:50%;width:{{ (0.5-p)*100 }}%;background:var(--down)"></span>{% endif %}
+<span style="left:50%;width:1px;background:var(--faint)"></span></div></div>{% endif %}
+{% endmacro %}
+
+{% macro bias(b) %}<span class="pill {{ b }}">{{ BIAS.get(b, b) }}</span>{% endmacro %}
