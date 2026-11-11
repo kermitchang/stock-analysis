@@ -4,3 +4,13 @@ data/
 _site/
 *.pyc
 .DS_Store
+
+# 環境變數與機密（絕不可上傳）
+.env
+.env.*
+*.env
+!.env.example
+secrets/
+*.pem
+*.key
+credentials*
