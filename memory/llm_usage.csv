@@ -1,0 +1,2 @@
+date,purpose,calls,prompt_tokens,completion_tokens,cost_usd,ok
+2026-11-11,theme_tagging,33,32301,281983,0.127477,9
