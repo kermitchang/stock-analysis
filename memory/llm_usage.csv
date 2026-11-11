@@ -1,2 +1,5 @@
 date,purpose,calls,prompt_tokens,completion_tokens,cost_usd,ok
+2026-11-11,analyst,10,16592,13561,0.0103414,10
+2026-11-11,attribution,20,26240,14374,0.0133843,20
+2026-11-11,news_label,12,45240,40088,0.0295042,10
 2026-11-11,theme_tagging,33,32301,281983,0.127477,9
