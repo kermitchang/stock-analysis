@@ -26,3 +26,5 @@ date,purpose,calls,prompt_tokens,completion_tokens,cost_usd,ok
 2026-11-20,analyst,11,21656,17957,0.0136056,10
 2026-11-20,attribution,20,23444,16512,0.0134994,20
 2026-11-20,news_label,4,13981,14727,0.0101,3
+2026-11-21,rule_proposal,2,7394,8724,0.0057344,1
+2026-11-21,theme_tagging,14,13115,105833,0.0481221,5
